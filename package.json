@@ -1,0 +1,1 @@
+{"name":"harvard-hindsight","version":"1.0.0","private":true,"description":"Guess the year a Harvard Art Museums painting was made.","type":"module","scripts":{"dev":"vercel dev"},"engines":{"node":">=18"}}
