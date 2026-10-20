@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hindsight · Guess the Year</title>
+  <meta name="description" content="A painting from the Harvard Art Museums. When was it made? Five rounds, one slider." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark">H</span>
+      <div>
+        <h1>Hindsight</h1>
+        <p class="sub">Guess when it was painted</p>
+      </div>
+    </div>
+    <div class="hud" aria-live="polite">
+      <div><span class="label">Round</span><span id="round">–</span></div>
+      <div><span class="label">Score</span><span id="score">0</span></div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Intro -->
+    <section id="intro" class="screen">
+      <h2>Every painting is a time capsule.</h2>
+      <p>You'll see five random paintings from the Harvard Art Museums collection. No title, no artist, just the picture. Drag the slider to the year you think it was made.</p>
+      <p class="fine">Up to 1,000 points per round. Land inside the museum's date range for a perfect score.</p>
+      <button id="start" class="btn primary">Start</button>
+    </section>
+
+    <!-- Game -->
+    <section id="game" class="screen hidden">
+      <figure class="frame">
+        <div class="loader" id="loader"><span></span></div>
+        <img id="art" alt="A painting from the Harvard Art Museums" />
+      </figure>
+
+      <div class="panel">
+        <div id="guessing">
+          <div class="year-readout"><span id="guess-year">1650</span></div>
+          <input id="slider" type="range" min="1300" max="2020" step="1" value="1650" aria-label="Your guess for the year" />
+          <div class="ticks"><span>1300</span><span>1500</span><span>1700</span><span>1900</span><span>2020</span></div>
+          <button id="lock" class="btn primary">Lock in guess</button>
+        </div>
+
+        <div id="reveal" class="hidden">
+          <div class="result">
+            <div class="pts"><span id="pts">0</span><small>pts</small></div>
+            <p id="verdict"></p>
+          </div>
+          <div class="timeline" id="timeline">
+            <div class="range" id="tl-range"></div>
+            <div class="pin guess" id="tl-guess"><span>You</span></div>
+          </div>
+          <h3 id="title"></h3>
+          <p class="meta" id="meta"></p>
+          <div class="palette" id="palette" aria-label="Color palette extracted by the museum"></div>
+          <p class="fine palette-note">Palette extracted from the image by the museum's own color analysis</p>
+          <div class="actions">
+            <a id="link" class="btn ghost" target="_blank" rel="noopener">View at the museum ↗</a>
+            <button id="next" class="btn primary">Next</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Summary -->
+    <section id="summary" class="screen hidden">
+      <h2>Final score: <span id="final">0</span><small> / 5,000</small></h2>
+      <p id="rank"></p>
+      <ol id="recap" class="recap"></ol>
+      <button id="again" class="btn primary">Play again</button>
+    </section>
+
+    <p id="error" class="error hidden"></p>
+  </main>
+
+  <footer>
+    Images and data courtesy of the <a href="https://harvardartmuseums.org" target="_blank" rel="noopener">Harvard Art Museums</a>.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
