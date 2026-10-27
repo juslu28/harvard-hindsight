@@ -87,7 +87,44 @@ h2 small { font-size: .5em; color: var(--muted); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); }
 .btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); }
 .btn:disabled { opacity: .5; cursor: default; }
-#start, #again { margin-top: 16px; }
+#again, #switch { margin-top: 0; }
+.btn.small { padding: 6px 12px; font-size: 13px; }
+
+/* Mode picker */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+@media (max-width: 560px) { .modes { grid-template-columns: 1fr; } }
+.mode-card {
+  font: inherit; text-align: left; cursor: pointer;
+  background: var(--card); color: var(--ink);
+  border: 1px solid var(--line); border-top: 4px solid var(--accent);
+  padding: 18px; display: flex; flex-direction: column; gap: 6px;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.mode-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+.mode-card:disabled { opacity: .6; cursor: default; transform: none; }
+#start-learn { border-top-color: var(--good); }
+.mode-name { font-family: var(--serif); font-size: 28px; font-weight: 600; line-height: 1; }
+.mode-desc { font-size: 14px; color: var(--muted); }
+
+/* Clues */
+.clue-area { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.clue-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.clue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.clue-list li { border-left: 3px solid var(--good); padding: 2px 0 2px 12px; animation: fadein .35s ease; }
+.clue-list .ct { font-weight: 600; font-size: 14px; }
+.clue-list .cx { font-size: 14px; margin: 2px 0 4px; }
+.clue-list .cs { font-size: 11px; color: var(--muted); }
+.clue-list .cs a { color: inherit; }
+@keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+.why { margin: 0 0 20px; }
+.why h4 { font-family: var(--serif); font-size: 22px; font-weight: 600; margin: 0 0 10px; }
+.museum-note { margin: 14px 0 10px; padding: 12px 14px; background: var(--wall); border: 1px solid var(--line); font-size: 14px; }
+.museum-note p { margin: 0 0 6px; font-style: italic; }
+.museum-note footer { font-size: 11px; color: var(--muted); padding: 0; border: 0; text-align: left; }
+.museum-note a { color: inherit; }
+.actions.center { justify-content: center; margin-top: 16px; }
+.actions.center .btn { flex: 0 1 auto; }
 
 /* Game layout */
 #game {
