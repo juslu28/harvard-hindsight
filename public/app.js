@@ -15,10 +15,14 @@ const els = {
   tlRange: $("tl-range"), tlGuess: $("tl-guess"),
   title: $("title"), meta: $("meta"), palette: $("palette"), link: $("link"),
   next: $("next"), final: $("final"), rank: $("rank"), recap: $("recap"),
-  start: $("start"), again: $("again"),
+  start: $("start"), startLearn: $("start-learn"), again: $("again"), switchMode: $("switch"),
+  scoreBox: $("score-box"), finalLine: $("final-line"),
+  clueArea: $("clue-area"), clueList: $("clue-list"), revealClue: $("reveal-clue"), noClues: $("no-clues"),
+  why: $("why"), whyList: $("why-list"),
+  note: $("museum-note"), noteText: $("museum-note-text"), noteLink: $("museum-note-link"),
 };
 
-let state = { rounds: [], i: 0, total: 0, results: [] };
+let state = { rounds: [], i: 0, total: 0, results: [], mode: "play", shown: 0 };
 
 function show(screen) {
   for (const s of [els.intro, els.game, els.summary]) s.classList.toggle("hidden", s !== screen);
@@ -29,15 +33,19 @@ function showError(msg) {
   els.error.classList.remove("hidden");
 }
 
-async function startGame() {
+const buttons = () => [els.start, els.startLearn, els.again, els.switchMode];
+
+async function startGame(mode) {
   els.error.classList.add("hidden");
-  els.start.disabled = els.again.disabled = true;
-  els.start.textContent = els.again.textContent = "Loading…";
+  buttons().forEach((b) => (b.disabled = true));
+  els.again.textContent = "Loading…";
   try {
-    const res = await fetch("/api/artworks");
+    const res = await fetch(mode === "learn" ? "/api/artworks?mode=learn" : "/api/artworks");
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
-    state = { rounds: data.rounds, i: 0, total: 0, results: [] };
+    state = { rounds: data.rounds, i: 0, total: 0, results: [], mode, shown: 0 };
+    document.body.dataset.mode = mode;
+    els.scoreBox.classList.toggle("hidden", mode === "learn");
     // warm the browser cache so later rounds appear instantly
     data.rounds.forEach((r) => { new Image().src = r.image; });
     els.score.textContent = "0";
@@ -47,9 +55,8 @@ async function startGame() {
     show(els.intro);
     showError(err.message);
   } finally {
-    els.start.disabled = els.again.disabled = false;
-    els.start.textContent = "Start";
-    els.again.textContent = "Play again";
+    buttons().forEach((b) => (b.disabled = false));
+    els.again.textContent = state.mode === "learn" ? "Learn again" : "Play again";
   }
 }
 
@@ -66,6 +73,42 @@ function loadRound() {
   els.art.onload = () => { els.art.classList.add("loaded"); els.loader.classList.add("hidden"); };
   els.art.onerror = () => { els.loader.classList.add("hidden"); };
   els.art.src = r.image;
+
+  // Learn mode: clues start hidden and are revealed one at a time
+  const learn = state.mode === "learn";
+  els.clueArea.classList.toggle("hidden", !learn);
+  if (learn) {
+    state.shown = 0;
+    els.clueList.innerHTML = "";
+    els.noClues.classList.toggle("hidden", (r.clues || []).length > 0);
+    updateClueButton();
+  }
+}
+
+function clueItem(c) {
+  const li = document.createElement("li");
+  li.innerHTML = `<div class="ct"></div><div class="cx"></div><div class="cs">Source: <a target="_blank" rel="noopener"></a></div>`;
+  li.querySelector(".ct").textContent = c.title;
+  li.querySelector(".cx").textContent = c.text;
+  const a = li.querySelector(".cs a");
+  a.textContent = c.source.name;
+  a.href = c.source.url;
+  return li;
+}
+
+function updateClueButton() {
+  const total = (state.rounds[state.i].clues || []).length;
+  const left = total - state.shown;
+  els.revealClue.classList.toggle("hidden", left <= 0);
+  els.revealClue.textContent = state.shown === 0 ? `Reveal a clue (${left})` : `Another clue (${left} left)`;
+}
+
+function revealClue() {
+  const clues = state.rounds[state.i].clues || [];
+  if (state.shown >= clues.length) return;
+  els.clueList.appendChild(clueItem(clues[state.shown]));
+  state.shown++;
+  updateClueButton();
 }
 
 function scoreFor(guess, r) {
@@ -89,10 +132,24 @@ function lockGuess() {
   const { off, points } = scoreFor(guess, r);
 
   state.total += points;
-  state.results.push({ r, guess, points });
+  state.results.push({ r, guess, points, off });
   els.score.textContent = state.total.toLocaleString();
 
+  const learn = state.mode === "learn";
+  els.pts.parentElement.classList.toggle("hidden", learn);
   els.pts.textContent = points.toLocaleString();
+
+  // "Why this date?" — every sourced clue, plus the curator's note if there is one
+  els.why.classList.toggle("hidden", !learn);
+  if (learn) {
+    els.whyList.innerHTML = "";
+    (r.clues || []).forEach((c) => els.whyList.appendChild(clueItem(c)));
+    els.note.classList.toggle("hidden", !r.note);
+    if (r.note) {
+      els.noteText.textContent = r.note.text;
+      els.noteLink.href = r.note.source.url;
+    }
+  }
   els.verdict.textContent = verdictText(off);
 
   els.tlRange.style.left = `${pct(r.begin)}%`;
@@ -130,33 +187,48 @@ function nextRound() {
 }
 
 function finish() {
+  const learn = state.mode === "learn";
   const max = state.rounds.length * 1000;
-  els.final.textContent = state.total.toLocaleString();
-  els.final.nextElementSibling.textContent = ` / ${max.toLocaleString()}`;
+  if (learn) {
+    const avg = Math.round(state.results.reduce((a, x) => a + x.off, 0) / state.results.length);
+    els.finalLine.innerHTML = "";
+    els.finalLine.append(`On average you were ${avg} year${avg === 1 ? "" : "s"} off`);
+  } else {
+    els.finalLine.innerHTML = 'Final score: <span id="final"></span><small></small>';
+    els.final = $("final");
+    els.final.textContent = state.total.toLocaleString();
+    els.final.nextElementSibling.textContent = ` / ${max.toLocaleString()}`;
+  }
   const ratio = state.total / max;
-  els.rank.textContent =
-    ratio > 0.8 ? "Curator material. Harvard should hire you." :
+  els.rank.textContent = learn
+    ? "Try a scored round and see how much the clues stuck."
+    : ratio > 0.8 ? "Curator material. Harvard should hire you." :
     ratio > 0.55 ? "Art history TA energy." :
     ratio > 0.3 ? "A solid gallery wanderer." :
     "Every visit to the museum makes you better. Go again!";
 
   els.recap.innerHTML = "";
-  state.results.forEach(({ r, guess, points }) => {
+  state.results.forEach(({ r, guess, points, off }) => {
     const li = document.createElement("li");
     li.innerHTML = `<img alt="" /><div><div class="t"></div><div class="d"></div></div><div class="p"></div>`;
     li.querySelector("img").src = r.image;
     li.querySelector(".t").textContent = r.title;
     li.querySelector(".d").textContent = `${r.dated} · you guessed ${guess}`;
-    li.querySelector(".p").textContent = points;
+    li.querySelector(".p").textContent = learn ? (off === 0 ? "✓" : `±${off}`) : points;
     els.recap.appendChild(li);
   });
   els.round.textContent = "–";
+  els.switchMode.textContent = learn ? "Play for points" : "Try Learn mode";
+  els.again.textContent = learn ? "Learn again" : "Play again";
   show(els.summary);
 }
 
 els.slider.addEventListener("input", () => { els.guessYear.textContent = els.slider.value; });
-els.start.addEventListener("click", startGame);
-els.again.addEventListener("click", startGame);
+els.start.addEventListener("click", () => startGame("play"));
+els.startLearn.addEventListener("click", () => startGame("learn"));
+els.again.addEventListener("click", () => startGame(state.mode));
+els.switchMode.addEventListener("click", () => startGame(state.mode === "learn" ? "play" : "learn"));
+els.revealClue.addEventListener("click", revealClue);
 els.lock.addEventListener("click", lockGuess);
 els.next.addEventListener("click", nextRound);
 document.addEventListener("keydown", (e) => {
