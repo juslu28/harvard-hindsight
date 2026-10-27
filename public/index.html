@@ -21,7 +21,7 @@
     </div>
     <div class="hud" aria-live="polite">
       <div><span class="label">Round</span><span id="round">–</span></div>
-      <div><span class="label">Score</span><span id="score">0</span></div>
+      <div id="score-box"><span class="label">Score</span><span id="score">0</span></div>
     </div>
   </header>
 
@@ -30,8 +30,16 @@
     <section id="intro" class="screen">
       <h2>Every painting is a time capsule.</h2>
       <p>You'll see five random paintings from the Harvard Art Museums collection. No title, no artist, just the picture. Drag the slider to the year you think it was made.</p>
-      <p class="fine">Up to 1,000 points per round. Land inside the museum's date range for a perfect score.</p>
-      <button id="start" class="btn primary">Start</button>
+      <div class="modes">
+        <button id="start" class="mode-card">
+          <span class="mode-name">Play</span>
+          <span class="mode-desc">Five paintings, up to 1,000 points each. Land inside the museum's date range for a perfect score.</span>
+        </button>
+        <button id="start-learn" class="mode-card">
+          <span class="mode-name">Learn</span>
+          <span class="mode-desc">No score. Reveal clues from the museum's records one at a time, then see why the painting dates when it does.</span>
+        </button>
+      </div>
     </section>
 
     <!-- Game -->
@@ -43,6 +51,14 @@
 
       <div class="panel">
         <div id="guessing">
+          <div id="clue-area" class="clue-area hidden">
+            <div class="clue-head">
+              <span class="label">Clues</span>
+              <button id="reveal-clue" class="btn ghost small">Reveal a clue</button>
+            </div>
+            <ol id="clue-list" class="clue-list"></ol>
+            <p id="no-clues" class="fine hidden">The museum's record for this painting has no clues we can verify. Trust your eye!</p>
+          </div>
           <div class="year-readout"><span id="guess-year">1650</span></div>
           <input id="slider" type="range" min="1300" max="2020" step="1" value="1650" aria-label="Your guess for the year" />
           <div class="ticks"><span>1300</span><span>1500</span><span>1700</span><span>1900</span><span>2020</span></div>
@@ -60,6 +76,15 @@
           </div>
           <h3 id="title"></h3>
           <p class="meta" id="meta"></p>
+          <section id="why" class="why hidden">
+            <h4>Why this date?</h4>
+            <ol id="why-list" class="clue-list"></ol>
+            <blockquote id="museum-note" class="museum-note hidden">
+              <p id="museum-note-text"></p>
+              <footer>From the <a id="museum-note-link" target="_blank" rel="noopener">museum's catalog record</a></footer>
+            </blockquote>
+            <p class="fine">Clues come only from the museum's catalog record or a cited art-history source. Nothing is inferred from the image itself.</p>
+          </section>
           <div class="palette" id="palette" aria-label="Color palette extracted by the museum"></div>
           <p class="fine palette-note">Palette extracted from the image by the museum's own color analysis</p>
           <div class="actions">
@@ -72,10 +97,13 @@
 
     <!-- Summary -->
     <section id="summary" class="screen hidden">
-      <h2>Final score: <span id="final">0</span><small> / 5,000</small></h2>
+      <h2 id="final-line">Final score: <span id="final">0</span><small> / 5,000</small></h2>
       <p id="rank"></p>
       <ol id="recap" class="recap"></ol>
-      <button id="again" class="btn primary">Play again</button>
+      <div class="actions center">
+        <button id="again" class="btn primary">Play again</button>
+        <button id="switch" class="btn ghost">Try Learn mode</button>
+      </div>
     </section>
 
     <p id="error" class="error hidden"></p>

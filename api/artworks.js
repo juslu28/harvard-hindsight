@@ -6,10 +6,13 @@
 // to just what the game needs, and sends that to the browser.
 // The key itself never leaves the server.
 
+import { buildClues, museumNote } from "../lib/clues.js";
+
 const API_URL = "https://api.harvardartmuseums.org/object";
 const ROUNDS = 5;
 
 export default async function handler(req, res) {
+  const learn = new URL(req.url, "http://x").searchParams.get("mode") === "learn";
   const apiKey = process.env.HARVARD_ART_MUSEUMS_API_KEY;
 
   if (!apiKey) {
@@ -39,6 +42,12 @@ export default async function handler(req, res) {
       "medium",
       "url",
       "colors",
+      // extra catalog fields used for Learn-mode clues
+      "period",
+      "labeltext",
+      "contextualtext",
+      "description",
+      "commentary",
     ].join(","),
   });
 
@@ -53,10 +62,15 @@ export default async function handler(req, res) {
     }
 
     const data = await upstream.json();
-    const rounds = (data.records || [])
-      .filter(isPlayable)
-      .slice(0, ROUNDS)
-      .map(toRound);
+    let playable = (data.records || []).filter(isPlayable);
+    if (learn) {
+      // Prefer paintings with more sourced clues (stable sort keeps the random order otherwise).
+      playable = playable
+        .map((r) => ({ r, n: buildClues(r).length }))
+        .sort((a, b) => Math.min(b.n, 3) - Math.min(a.n, 3))
+        .map((x) => x.r);
+    }
+    const rounds = playable.slice(0, ROUNDS).map((r) => toRound(r, learn));
 
     if (rounds.length === 0) {
       return res.status(502).json({ error: "No playable artworks came back. Try again." });
@@ -80,7 +94,7 @@ function isPlayable(r) {
   );
 }
 
-function toRound(r) {
+function toRound(r, learn) {
   const begin = r.datebegin;
   const end = r.dateend && r.dateend >= begin ? r.dateend : begin;
   const artist = (r.people || []).find((p) => p.role === "Artist") || (r.people || [])[0];
@@ -102,5 +116,16 @@ function toRound(r) {
       .sort((a, b) => b.percent - a.percent)
       .slice(0, 6)
       .map((c) => ({ hex: c.color, percent: c.percent, name: c.css3 || c.hue })),
+    ...(learn && {
+      clues: buildClues(r),
+      note: museumNote(r),
+      // the raw catalog values the clues were built from, so they can be checked
+      catalog: {
+        culture: r.culture || null,
+        medium: r.medium || null,
+        period: r.period || null,
+        artist: artist ? { name: artist.name, role: artist.role, prefix: artist.prefix || null, displaydate: artist.displaydate || null } : null,
+      },
+    }),
   };
 }
