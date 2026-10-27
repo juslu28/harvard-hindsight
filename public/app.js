@@ -85,8 +85,30 @@ function loadRound() {
   }
 }
 
-function clueItem(c) {
+function clueItem(c, revealed = false) {
   const li = document.createElement("li");
+  if (c.items) {
+    // "What to look for": a list of sourced visual hallmarks
+    li.className = "look";
+    li.innerHTML = `<div class="ct"></div><div class="cx"></div><ul class="hallmarks"></ul>`;
+    li.querySelector(".ct").textContent = revealed ? c.revealTitle : c.title;
+    li.querySelector(".cx").textContent = revealed ? c.revealIntro : c.intro;
+    const ul = li.querySelector(".hallmarks");
+    c.items.forEach((h) => {
+      const item = document.createElement("li");
+      item.innerHTML = `<span class="hs"></span><span class="ht"></span>` +
+        (revealed ? `<q class="hq"></q>` : "") +
+        `<div class="cs">Source: <a target="_blank" rel="noopener"></a></div>`;
+      item.querySelector(".hs").textContent = h.school ? h.school + ": " : "";
+      item.querySelector(".ht").textContent = h.text;
+      if (revealed) item.querySelector(".hq").textContent = h.quote;
+      const a = item.querySelector("a");
+      a.textContent = h.source.name;
+      a.href = h.source.url;
+      ul.appendChild(item);
+    });
+    return li;
+  }
   li.innerHTML = `<div class="ct"></div><div class="cx"></div><div class="cs">Source: <a target="_blank" rel="noopener"></a></div>`;
   li.querySelector(".ct").textContent = c.title;
   li.querySelector(".cx").textContent = c.text;
@@ -143,7 +165,7 @@ function lockGuess() {
   els.why.classList.toggle("hidden", !learn);
   if (learn) {
     els.whyList.innerHTML = "";
-    (r.clues || []).forEach((c) => els.whyList.appendChild(clueItem(c)));
+    (r.clues || []).forEach((c) => els.whyList.appendChild(clueItem(c, true)));
     els.note.classList.toggle("hidden", !r.note);
     if (r.note) {
       els.noteText.textContent = r.note.text;
