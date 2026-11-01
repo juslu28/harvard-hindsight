@@ -1,28 +1,65 @@
-# Hindsight: Guess the Year
+# Hindsight: a daily art-dating game
 
-A small game built on the [Harvard Art Museums API](https://github.com/harvardartmuseums/api-docs).
-You see a random painting from the collection with no title and no artist, and you
-drag a slider to guess the year it was made. Five rounds, up to 1,000 points each.
-After each guess you see the real title, artist, and date, plus the painting's
-color palette as measured by the museum.
+A game built on the [Harvard Art Museums API](https://github.com/harvardartmuseums/api-docs).
+You see a painting from the collection with no title and no artist, look closely (magnifier
+and full-resolution zoom), and guess the year it was made.
+
+- **Daily challenge:** five paintings a day, the same for everyone, one try. New puzzle at
+  midnight US Eastern. Up to 1,000 points per painting, a shareable emoji result, and a
+  streak and stats saved in your browser.
+- **Learn mode:** endless, no score. Reveal sourced clues and visual "what to look for"
+  hallmarks, then see why each painting dates when it does.
+
+Scoring: years off = 0 if your guess is inside the museum's date range, otherwise the distance
+to the nearest end of it. Points = 1000 × e^(−years off / 75).
+🎯 inside the range · 🟩 within 25 years · 🟨 26–75 years · 🟥 more than 75 years.
 
 ## How it's built
 
 ```
 harvard-hindsight/
 ├── api/
-│   └── artworks.js     ← Vercel serverless function (holds the API key, server-side only)
+│   ├── daily.js        ← GET /api/daily: today's 5 paintings (answers hidden)
+│   │                     GET /api/daily?reveal=TOKEN: one painting's answer, after a guess
+│   └── learn.js        ← GET /api/learn?batch=N: a batch of paintings with clues, for Learn mode
+├── lib/
+│   ├── harvard.js      ← shared server code: museum API calls, filters, sealed tokens
+│   ├── clues.js        ← sourced clues built from the museum's catalog record
+│   └── hallmarks.js    ← visual hallmarks for 21 painting traditions, each with a quoted source
 ├── public/
 │   ├── index.html      ← the page
-│   ├── style.css
-│   └── app.js          ← game logic; calls /api/artworks (never the museum directly)
+│   ├── style.css       ← "gallery after hours" design
+│   ├── app.js          ← game logic (daily, learn, timeline, stats, sharing, keyboard)
+│   ├── fx.js           ← spotlight, dust, custom cursor, magnifier, paint burst, salon wall
+│   └── zoom.js         ← deep-zoom viewer (OpenSeadragon + the museum's IIIF image service)
 ├── vercel.json         ← tells Vercel to serve the public/ folder
 ├── package.json
 ├── .env.example        ← template for your local key file
 └── .gitignore          ← keeps .env.local out of GitHub
 ```
 
-There is no build step and there are no dependencies.
+There is no build step. The only third-party code is OpenSeadragon, loaded from cdnjs the
+first time someone opens the detail view.
+
+### The daily puzzle
+
+- "Today" is the date in US Eastern time. The 5 paintings are picked from the museum's
+  paintings with a seeded shuffle (`sort=random:YYYYMMDD`), so everyone gets the same set.
+  The picker also keeps the set varied: different artists, at most 2 from one culture, and
+  no two from the same 50-year window.
+- The response is cached on Vercel's CDN until midnight Eastern, so the museum API is
+  called only a few times a day.
+- Answers stay on the server. The browser gets an encrypted token for each painting instead
+  of the museum's object ID, and asks `/api/daily?reveal=TOKEN` only after a guess is
+  locked in. The encryption key is derived from your API key, so there's nothing extra to set up.
+- One try per day, your progress (you can leave and resume) and your stats are stored in
+  your browser's localStorage.
+
+### Learn mode
+
+The browser picks random batch numbers and calls `/api/learn?batch=N`. Each batch is a
+fixed shuffle that's cached for a day, so heavy use doesn't exhaust the API key's daily
+limit. Paintings already seen in the session are skipped.
 
 ## 1. GitHub
 
@@ -53,19 +90,20 @@ git push
      - Environments: Production, Preview, and Development
 4. Click **Deploy**. In about 30 seconds you'll get a URL like `harvard-hindsight.vercel.app`.
 
-From now on, every `git push` to `main` redeploys automatically.
+From now on, every `git push` to `main` redeploys automatically, and every other branch
+gets its own preview URL.
 
 **If you add or change the key after the first deploy:** go to Project → Settings →
 Environment Variables, save the change, then open **Deployments** and **Redeploy**
 the latest one. Environment variables only apply to new deployments.
 
-**Quick check:** visit `https://YOUR-SITE.vercel.app/api/artworks`. You should see JSON
-with a `rounds` array. If you see an error about `HARVARD_ART_MUSEUMS_API_KEY`, the
-variable is missing or the site needs a redeploy.
+**Quick check:** visit `https://YOUR-SITE.vercel.app/api/daily`. You should see JSON
+with today's `date`, `puzzle` number and 5 `rounds`. If you see an error about
+`HARVARD_ART_MUSEUMS_API_KEY`, the variable is missing or the site needs a redeploy.
 
 ## 3. Run it locally (optional)
 
-Opening `index.html` directly won't work, because the `/api` function needs a server. Use the Vercel CLI:
+Opening `index.html` directly won't work, because the `/api` functions need a server. Use the Vercel CLI:
 
 ```bash
 npm install -g vercel
@@ -80,26 +118,12 @@ vercel dev                      # visit http://localhost:3000
 The browser never sees the key. Here's the flow:
 
 ```
-Browser ──GET /api/artworks──▶ Vercel function ──GET api.harvardartmuseums.org/object?apikey=…──▶ Harvard
-        ◀── 5 trimmed rounds ──                ◀───────────── 40 random paintings ────────────────
+Browser ──/api/daily, /api/learn──▶ Vercel functions ──api.harvardartmuseums.org/object?apikey=…──▶ Harvard
+        ◀──── trimmed paintings ───                  ◀──────────── museum records ──────────────────
 ```
 
-`api/artworks.js` reads `process.env.HARVARD_ART_MUSEUMS_API_KEY`. It then requests
-`/object` with these parameters:
-
-| Parameter | Value | Why |
-|---|---|---|
-| `classification` | `Paintings` | keeps the game about paintings |
-| `hasimage` | `1` | only works with a picture |
-| `q` | `imagepermissionlevel:0` | only images the museum lets you show at full size |
-| `yearmade` | `1300-2020` | matches the slider's range |
-| `sort` | `random` | a new set every game |
-| `size` | `40` | over-fetches, then filters down to 5 good rounds |
-| `fields` | `id,title,dated,datebegin,dateend,primaryimageurl,people,culture,medium,url,colors` | only the data the game uses |
-
-The function drops works with no image or with a date range wider than 60 years, so
-every question is fair. It keeps 5 and returns only the trimmed fields. Scoring uses
-the museum's `datebegin`/`dateend` range: a guess inside it gets a perfect 1,000 points.
-The palette strip comes from the museum's `colors` field.
+Every request asks the museum's `/object` endpoint for paintings that have an image the
+museum allows at full size (`imagepermissionlevel:0`) and are dated 1300–2020. Paintings
+with a date range wider than 60 years are skipped so every question is fair.
 
 Image credit: Harvard Art Museums. Check their API terms before using this for anything beyond a personal or educational project.
