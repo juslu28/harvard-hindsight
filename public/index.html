@@ -3,6 +3,203 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hindsight · A daily art-dating game</title>
+  <meta name="description" content="Five paintings from the Harvard Art Museums every day. Look closely, zoom in, and guess the year each was made." />
+  <meta property="og:title" content="Hindsight · A daily art-dating game" />
+  <meta property="og:description" content="Five paintings from the Harvard Art Museums every day. How close can you get?" />
+  <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#15110d" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='4' width='56' height='56' rx='6' fill='%23d8b46a'/%3E%3Crect x='12' y='12' width='40' height='40' fill='%231d1814'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='30' text-anchor='middle' fill='%23f1d898'%3EH%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="is-home">
+  <!-- Atmosphere: gallery wall, moving spotlight, drifting dust, salon of paintings -->
+  <div class="ambient" aria-hidden="true"></div>
+  <canvas id="dust" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div class="salon" id="salon" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <button class="brand" id="home-btn" aria-label="Hindsight home">
+      <span class="brand-mark" aria-hidden="true">H</span>
+      <span class="brand-name">Hindsight</span>
+    </button>
+    <div class="topbar-center" id="topbar-center" aria-live="polite"></div>
+    <nav class="topbar-actions">
+      <button class="btn ghost small hidden" id="end-learn">End session</button>
+      <button class="icon-btn" id="stats-btn" aria-label="Your statistics" data-tip="Statistics">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V11M12 20V4M19 20v-6" /></svg>
+      </button>
+      <button class="icon-btn" id="help-btn" aria-label="How to play" data-tip="How to play">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.2-2.4 3.6M12 17.2v.1" /></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main id="app">
+    <!-- HOME -->
+    <section class="screen home" id="screen-home">
+      <div class="hero">
+        <p class="eyebrow">From the collection of the Harvard Art Museums</p>
+        <h1 class="title">Hind<span>sight</span></h1>
+        <p class="lede">Every painting is a time capsule. Look closely, zoom into the brushwork, and guess the year it was made.</p>
+      </div>
+      <div class="mode-grid">
+        <button class="mode-card daily" id="daily-card">
+          <span class="mode-kicker" id="daily-kicker">Daily challenge</span>
+          <span class="mode-name">Today's Five</span>
+          <span class="mode-desc" id="daily-desc">Five paintings, the same for everyone. One try per day.</span>
+          <span class="mode-cta" id="daily-cta">Loading today's puzzle…</span>
+        </button>
+        <button class="mode-card learn" id="learn-card">
+          <span class="mode-kicker">Endless</span>
+          <span class="mode-name">Learn</span>
+          <span class="mode-desc">No score. Reveal clues and visual hallmarks from museum sources, as many paintings as you like.</span>
+          <span class="mode-cta">Start exploring <span aria-hidden="true">→</span></span>
+        </button>
+      </div>
+      <p class="home-foot" id="home-foot"></p>
+    </section>
+
+    <!-- GAME (used by both modes) -->
+    <section class="screen game hidden" id="screen-game">
+      <div class="wall">
+        <div class="frame-wrap" id="frame-wrap">
+          <div class="picture-light" aria-hidden="true"></div>
+          <figure class="frame" id="frame">
+            <div class="mat" id="mat">
+              <img id="art" alt="" draggable="false" />
+              <div class="art-loading" id="art-loading"><span></span></div>
+              <div class="art-error hidden" id="art-error">
+                <p>This image didn't load.</p>
+                <button class="btn ghost small" id="art-retry">Try again</button>
+              </div>
+            </div>
+          </figure>
+          <button class="zoom-btn" id="zoom-btn" aria-label="Explore the painting in detail">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="M15.5 15.5 21 21M10.5 7.5v6M7.5 10.5h6" /></svg>
+            Explore detail <kbd>Z</kbd>
+          </button>
+        </div>
+        <div class="wall-label" id="wall-label"></div>
+      </div>
+
+      <aside class="panel" id="panel">
+        <div class="panel-inner">
+          <div class="panel-head">
+            <p class="eyebrow" id="round-label"></p>
+            <h2 class="prompt" id="prompt">When was this painted?</h2>
+          </div>
+
+          <div class="clue-area hidden" id="clue-area">
+            <div class="clue-head">
+              <span class="label">Clues</span>
+              <button class="btn ghost small" id="reveal-clue">Reveal a clue</button>
+            </div>
+            <ol class="clue-list" id="clue-list"></ol>
+            <p class="fine hidden" id="no-clues">The museum's record for this painting has no clues we can verify. Trust your eye.</p>
+          </div>
+
+          <div class="guess" id="guess">
+            <div class="year-row">
+              <input id="year-input" class="year-input" type="text" inputmode="numeric" maxlength="4" value="1650" aria-label="Your guess (year)" autocomplete="off" spellcheck="false" />
+              <span class="year-hint" id="year-hint">Drag the timeline, or type a year</span>
+            </div>
+            <div class="ruler" id="ruler">
+              <div class="ruler-track" id="ruler-track">
+                <div class="ruler-ticks" id="ruler-ticks"></div>
+                <div class="ruler-band" id="ruler-band"><span id="ruler-band-label"></span></div>
+                <div class="ruler-pin" id="ruler-pin"><span id="ruler-pin-label"></span></div>
+              </div>
+              <input id="slider" class="slider" type="range" min="1300" max="2020" step="1" value="1650" aria-label="Timeline: choose a year" />
+            </div>
+            <button class="btn primary block" id="lock">Lock in guess <kbd>Enter</kbd></button>
+            <p class="keys" id="keys-hint"><kbd>←</kbd><kbd>→</kbd> nudge one year · <kbd>Shift</kbd> for ten</p>
+          </div>
+
+          <div class="result hidden" id="result" aria-live="polite">
+            <div class="result-badge" id="result-badge">
+              <span class="tier-chip" id="tier-chip"></span>
+              <div class="result-text">
+                <div class="result-off" id="result-off"></div>
+                <div class="result-sub" id="result-sub"></div>
+              </div>
+              <div class="result-points" id="result-points"></div>
+            </div>
+            <section class="why hidden" id="why">
+              <button class="why-toggle" id="why-toggle" aria-expanded="false">
+                <span>Why this date?</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5" /></svg>
+              </button>
+              <div class="why-body" id="why-body">
+                <ol class="clue-list" id="why-list"></ol>
+                <blockquote class="museum-note hidden" id="museum-note">
+                  <p id="museum-note-text"></p>
+                  <cite>From the <a id="museum-note-link" target="_blank" rel="noopener">museum's catalog record</a></cite>
+                </blockquote>
+                <p class="fine">Clues come only from the museum's catalog record or cited museum and scholarly sources. "Hallmarks" are general traits of the painting's tradition, quoted from those sources, not claims about this specific image.</p>
+              </div>
+            </section>
+            <button class="btn primary block" id="next">Next painting <kbd>Enter</kbd></button>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- DAILY RESULTS -->
+    <section class="screen results hidden" id="screen-results"></section>
+
+    <!-- LEARN SUMMARY -->
+    <section class="screen summary hidden" id="screen-summary"></section>
+  </main>
+
+  <!-- Deep zoom viewer -->
+  <div class="zoom hidden" id="zoom" role="dialog" aria-modal="true" aria-label="Detail view">
+    <div class="osd" id="osd"></div>
+    <div class="zoom-top">
+      <span class="zoom-title">Detail view</span>
+      <span class="zoom-tip">Scroll to zoom · drag to move · double-click to dive in</span>
+    </div>
+    <div class="zoom-bar" role="toolbar" aria-label="Zoom controls">
+      <button data-z="out" aria-label="Zoom out"><svg viewBox="0 0 24 24"><path d="M6 12h12" /></svg></button>
+      <button data-z="home" aria-label="Fit to screen"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg></button>
+      <button data-z="in" aria-label="Zoom in"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12" /></svg></button>
+      <span class="zoom-sep"></span>
+      <button data-z="close" class="zoom-close">Close <kbd>Esc</kbd></button>
+    </div>
+    <div class="zoom-loading" id="zoom-loading"><span></span>Loading full-resolution image…</div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <button class="modal-x" id="modal-x" aria-label="Close">×</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Custom cursor + magnifier (mouse only) -->
+  <div class="cursor-ring" id="cursor-ring" aria-hidden="true"></div>
+  <div class="cursor-dot" id="cursor-dot" aria-hidden="true"></div>
+  <div class="loupe" id="loupe" aria-hidden="true"><span class="loupe-tip">Click to explore</span></div>
+  <canvas id="burst" aria-hidden="true"></canvas>
+
+  <footer class="site-foot">
+    Images and data courtesy of the <a href="https://harvardartmuseums.org" target="_blank" rel="noopener">Harvard Art Museums</a>.
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Hindsight · Guess the Year</title>
   <meta name="description" content="A painting from the Harvard Art Museums. When was it made? Five rounds, one slider." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
