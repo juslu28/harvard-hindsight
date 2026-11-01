@@ -290,7 +290,12 @@ let fitQueued = false;
 addEventListener("resize", () => {
   if (fitQueued) return;
   fitQueued = true;
-  requestAnimationFrame(() => { fitQueued = false; if (screen === "game") fitArt(); });
+  requestAnimationFrame(() => {
+    fitQueued = false;
+    if (screen !== "game") return;
+    fitArt();
+    if (game.revealed) for (const s of [el.bandLabel, el.pinLabel]) clampToRuler(s, Number(s.dataset.frac));
+  });
 });
 
 function clueItem(c, revealed = false) {
@@ -426,9 +431,11 @@ function showReveal(data) {
   el.lock.classList.add("hidden");
   el.ruler.style.setProperty("--b0", pct(a.begin));
   el.ruler.style.setProperty("--bw", Math.max(0, pct(a.end) - pct(a.begin)));
-  el.bandLabel.textContent = a.dated;
+  el.bandLabel.textContent = a.begin === a.end ? String(a.begin) : `${a.begin}–${a.end}`;
   el.pinLabel.textContent = `You: ${guess}`;
   el.ruler.classList.add("revealed");
+  clampToRuler(el.bandLabel, (pct(a.begin) + pct(a.end)) / 2);
+  clampToRuler(el.pinLabel, pct(guess));
 
   // result card
   el.tierChip.className = `tier-chip t-${s.tier}`;
@@ -486,6 +493,17 @@ function showReveal(data) {
   }
   el.next.focus({ preventScroll: true });
   el.panel.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// Keep a timeline label inside the ruler, even when it sits near 1300 or 2020.
+function clampToRuler(span, frac) {
+  span.dataset.frac = frac;
+  const w = el.pin.parentElement.clientWidth; // the ruler track
+  const half = span.offsetWidth / 2;
+  const c = frac * w;
+  const slack = 12; // the ruler's padding on each side of the track
+  const shift = Math.max(half - c - slack, Math.min(0, w + slack - half - c));
+  span.style.transform = `translateX(calc(-50% + ${Math.round(shift)}px))`;
 }
 
 function setWhyOpen(open) {
