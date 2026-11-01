@@ -851,8 +851,16 @@ function bind() {
   el.yearInput.addEventListener("blur", () => { if (!game.revealed) commitYearInput(); });
   el.lock.addEventListener("click", lockGuess);
   el.next.addEventListener("click", nextRound);
-  el.revealClue.addEventListener("click", revealClue);
-  el.whyToggle.addEventListener("click", () => setWhyOpen(!el.why.classList.contains("open")));
+  // After a mouse click (detail > 0), hand focus back so Enter keeps meaning "lock in" / "next".
+  // Keyboard users who tabbed to these buttons keep normal button behavior.
+  el.revealClue.addEventListener("click", (e) => {
+    revealClue();
+    if (e.detail > 0) el.slider.focus({ preventScroll: true });
+  });
+  el.whyToggle.addEventListener("click", (e) => {
+    setWhyOpen(!el.why.classList.contains("open"));
+    if (e.detail > 0) el.next.focus({ preventScroll: true });
+  });
   el.zoomBtn.addEventListener("click", () => openZoom(game.round && game.round.image));
   el.art.addEventListener("click", () => openZoom(game.round && game.round.image));
   el.artRetry.addEventListener("click", () => game.round && loadArt(game.round.image));
