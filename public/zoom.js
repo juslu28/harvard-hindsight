@@ -35,8 +35,29 @@ export function isZoomOpen() {
   return !zoomEl.classList.contains("hidden");
 }
 
+// The museum's image URLs redirect to ids.lib.harvard.edu/mps/<id>, and its IIIF service
+// accepts the same id. When the record didn't include a IIIF address, find it that way.
+async function iiifFor(image) {
+  if (image.iiif) return image.iiif.replace(/\/$/, "");
+  if (image._iiif !== undefined) return image._iiif;
+  let found = null;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 5000);
+  try {
+    const res = await fetch(image.thumb || image.src, { method: "HEAD", mode: "cors", signal: ctl.signal });
+    const m = res.url.match(/\/(?:mps|ids\/view)\/(\d+)/);
+    if (m) found = `https://ids.lib.harvard.edu/ids/iiif/${m[1]}`;
+  } catch { /* use the single large image instead */ }
+  clearTimeout(timer);
+  image._iiif = found;
+  return found;
+}
+
+let openJob = 0;
+
 export async function openZoom(image) {
   if (!image) return;
+  const job = ++openJob;
   lastFocus = document.activeElement;
   stopLoupe();
   document.body.classList.add("zoom-open");
@@ -75,8 +96,10 @@ export async function openZoom(image) {
         }
       });
     }
-    current = { ...image, _fellBack: !image.iiif };
-    const source = image.iiif ? `${image.iiif.replace(/\/$/, "")}/info.json` : { type: "image", url: image.hires, buildPyramid: false };
+    const iiif = await iiifFor(image);
+    if (job !== openJob || !isZoomOpen()) return; // closed or replaced while we were looking
+    current = { ...image, _fellBack: !iiif };
+    const source = iiif ? `${iiif}/info.json` : { type: "image", url: image.hires, buildPyramid: false };
     viewer.open(source);
   } catch (err) {
     setLoading(true, err.message);
