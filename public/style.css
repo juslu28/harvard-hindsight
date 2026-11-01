@@ -363,6 +363,11 @@ body.is-game .site-foot { display: none; }
 
 /* result */
 .result { display: flex; flex-direction: column; gap: 16px; }
+/* Keep "Next" in reach while reading the explanation: it rides the bottom of the panel. */
+.result #next {
+  position: sticky; bottom: 16px; z-index: 2;
+  box-shadow: 0 10px 24px -8px rgba(217, 180, 106, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 14px 30px 16px rgba(19, 16, 13, 0.92);
+}
 .result-badge {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 14px;
   padding: 14px 16px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line);
